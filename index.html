@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- Фавикон и иконки приложения — из рисунка release/app-icon-src.png,
+         генератор scripts/build-app-icon.mjs. favicon.svg (молния) в head не подключён. -->
+    <link rel="icon" type="image/png" sizes="48x48" href="favicon-48.png?v=4" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <!-- interactive-widget=resizes-content: клавиатура сжимает layout-вьюпорт, а не просто
+         накрывает страницу. Тогда браузер САМ поднимает поле над клавиатурой (места для
+         скролла ровно столько, сколько она заняла) и ручные костыли не нужны — их удаление
+         и есть лечение «клавиатура открывается-закрывается, экран болтает».
+         maximum-scale НЕ добавлять: ломает зум пользователю, а от зума полей лечит font-size:16px. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
+    <meta name="theme-color" content="#FAFAFA" />
+
+    <!-- ── SEO ── -->
+    <title>FullBody — дневник тренировок с картой мышц</title>
+    <meta name="description" content="Бесплатный дневник тренировок с интерактивной картой мышц. Записывайте упражнения, подходы и повторы, следите за нагрузкой по группам мышц и прогрессом. Работает в браузере и как приложение." />
+    <meta name="keywords" content="дневник тренировок, трекер тренировок, журнал тренировок, карта мышц, карта тела, учёт подходов, отслеживание прогресса, фитнес дневник, приложение для тренировок, нагрузка на мышцы, тренировки в зале" />
+    <meta name="author" content="FullBody" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="yandex-verification" content="9f7563c453b10eec" />
+    <meta name="google-site-verification" content="zUEue278gW89BwEK_hxtmrZ5hxBURf4fy-HKWs25lxY" />
+    <link rel="canonical" href="https://fullbody-tracker.ru/" />
+
+    <!-- ── Open Graph (Telegram, WhatsApp, VK, Facebook) ── -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="FullBody" />
+    <meta property="og:locale" content="ru_RU" />
+    <meta property="og:url" content="https://fullbody-tracker.ru/" />
+    <meta property="og:title" content="FullBody — дневник тренировок с картой мышц" />
+    <meta property="og:description" content="Бесплатный дневник тренировок с интерактивной картой мышц. Записывайте подходы, следите за нагрузкой по группам мышц и прогрессом." />
+    <meta property="og:image" content="https://fullbody-tracker.ru/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="FullBody — дневник тренировок с картой мышц" />
+
+    <!-- ── Twitter Card ── -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="FullBody — дневник тренировок с картой мышц" />
+    <meta name="twitter:description" content="Бесплатный дневник тренировок с интерактивной картой мышц. Записывайте подходы, следите за нагрузкой и прогрессом." />
+    <meta name="twitter:image" content="https://fullbody-tracker.ru/og-image.png" />
+
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="FullBody" />
+
+    <!-- ── Микроразметка Schema.org (богатый сниппет в выдаче) ── -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "FullBody",
+      "url": "https://fullbody-tracker.ru/",
+      "description": "Бесплатный дневник тренировок с интерактивной картой мышц: запись упражнений, подходов и повторов, отслеживание нагрузки по группам мышц и прогресса.",
+      "applicationCategory": "HealthApplication",
+      "operatingSystem": "Web, Android",
+      "inLanguage": "ru",
+      "browserRequirements": "Requires JavaScript",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "RUB" }
+    }
+    </script>
+
+    <!-- Шрифты лежат ЛОКАЛЬНО (public/fonts, генератор scripts/fetch-local-fonts.mjs).
+         ⚠️ Не возвращать загрузку с fonts.googleapis.com: в приложении она делает две
+         вещи, обе плохие. (1) Без сети (зал в подвале) иконочный шрифт не приходит,
+         и Material Symbols рисует ЛИГАТУРУ ТЕКСТОМ — на экране вместо иконок написано
+         «content_copy», «calendar_today», «expand_more»; приложение выглядит сломанным.
+         (2) Пока Inter не загрузился, запасной шрифт шире, и навбар на 390 px не влезает
+         в строку — кнопка «Войти» срезается краем (замер: воздух −13 px до загрузки,
+         +12 после). Локальные шрифты снимают обе проблемы разом. -->
+    <!-- ⚠️ Имя иконочного файла зависит от того, КАК он собран: полный шрифт приходил
+         подмножеством `fallback`, а собранный по списку иконок — `all`. Перегенерируете
+         шрифт — сверьте имя здесь, иначе preload молча ловит 404 (шрифт всё равно
+         подтянется из fonts.css, но лишним запросом и позже, чем нужно).
+         Размеры после перехода на подмножество (28.08.2026): иконки 444 КБ → 5 КБ. -->
+    <link rel="preload" href="./fonts/icons-all-400.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="./fonts/inter-cyrillic-400-800.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="./fonts/fonts.css" />
+
+    <!-- Yandex.Metrika counter — ТОЛЬКО веб.
+         ⚠️ В приложении Метрику включать нельзя: у счётчика стоит webvisor, то есть запись
+         сессии. Внутри приложения это = сбор данных сторонним сервисом, который пришлось бы
+         объявлять в анкете Data safety Google Play (и он ломает ответ «передача третьим
+         лицам — нет»). В политике конфиденциальности прямо написано, что в мобильном
+         приложении Метрика не работает, — код обязан это соблюдать.
+         Проверка двойная: (1) window.Capacitor — нативный мост Capacitor вставляет свой
+         inline-скрипт сразу после <head>, то есть ДО этого блока (JSInjector.getInjectedStream),
+         поэтому переменная здесь уже есть; (2) localhost — адрес, с которого WebView отдаёт
+         приложение (заодно глушит Метрику в dev и preview). Одной проверки мало: если
+         Capacitor когда-нибудь поменяет порядок инжекта, счётчик молча заработает в приложении. -->
+    <script type="text/javascript">
+      if (!window.Capacitor && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+        (function(m,e,t,r,i,k,a){
+            m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+            m[i].l=1*new Date();
+            for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+            k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+        })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=109789232', 'ym');
+
+        ym(109789232, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", referrer: document.referrer, url: location.href, accurateTrackBounce:true, trackLinks:true});
+      }
+    </script>
+    <noscript><div><img src="https://mc.yandex.ru/watch/109789232" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+    <!-- /Yandex.Metrika counter -->
+    <script type="module" crossorigin src="./assets/index-BKTiDtEK.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/rolldown-runtime-BpQH8Ho1.js">
+    <link rel="modulepreload" crossorigin href="./assets/supabase-B82o43Hl.js">
+    <link rel="modulepreload" crossorigin href="./assets/react-C8iHLLca.js">
+    <link rel="stylesheet" crossorigin href="./assets/index-Ieb1TJUH.css">
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <!-- ⛔️ САМОИСЦЕЛЕНИЕ ОТ ПРОТУХШЕЙ СТРАНИЦЫ (28.08.2026). Не удалять.
+         Что случилось: `deploy.sh` пушит ветку целиком, поэтому после деплоя старые
+         `assets/index-*.js` ИСЧЕЗАЮТ с сервера (проверено: все прежние отдают 404).
+         Если service worker отдал сохранённый index.html от прошлой версии, страница
+         тянет уже несуществующий файл → приложение не стартует → БЕЛЫЙ ЭКРАН, и так
+         при каждом заходе, потому что кэш цел и обновляться ему незачем.
+         Владелец просидел так полдня на двух телефонах, пока сайт «работал у всех».
+         Ловим не по таймеру, а по ФАКТУ ошибки загрузки скрипта: таймер на медленной
+         связи сбрасывал бы кэш у тех, у кого всё исправно, просто грузится долго. -->
+    <script>
+      (function () {
+        var FLAG = 'fb_stale_recovered'
+        function heal() {
+          // лечимся один раз за вкладку, иначе при живом 404 получится вечный цикл
+          if (sessionStorage.getItem(FLAG)) return
+          sessionStorage.setItem(FLAG, '1')
+          var jobs = []
+          try {
+            if (window.caches) jobs.push(caches.keys().then(function (keys) {
+              return Promise.all(keys.map(function (k) { return caches.delete(k) }))
+            }))
+            if (navigator.serviceWorker) jobs.push(navigator.serviceWorker.getRegistrations().then(function (rs) {
+              return Promise.all(rs.map(function (r) { return r.unregister() }))
+            }))
+          } catch (e) { /* приватный режим и т. п. — просто перезагрузимся */ }
+          var again = function () { location.reload() }
+          Promise.all(jobs).then(again, again)
+        }
+        window.addEventListener('error', function (e) {
+          var el = e && e.target
+          if (!el || el === window) return
+          var src = el.src || el.href || ''
+          if (src.indexOf('/assets/') !== -1) heal()
+        }, true)   // capture: ошибки загрузки ресурсов не всплывают
+      })()
+    </script>
+  </body>
+</html>
