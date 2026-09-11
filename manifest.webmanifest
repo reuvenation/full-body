@@ -1,0 +1,19 @@
+{
+  "name": "FullBody — дневник тренировок",
+  "short_name": "FullBody",
+  "description": "Трекер тренировок с интерактивной картой мышц: записывай упражнения, следи за нагрузкой и параметрами тела.",
+  "lang": "ru",
+  "dir": "ltr",
+  "start_url": ".",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FAFAFA",
+  "theme_color": "#FAFAFA",
+  "categories": ["health", "fitness", "lifestyle"],
+  "icons": [
+    { "src": "pwa-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "pwa-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
