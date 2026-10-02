@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Диагностика — FullBody</title>
+<!--
+  Диагностика на устройстве владельца (28.08.2026). Первый заход показал, что дело
+  НЕ в размере файлов: пустой файл прошёл за 0,4 с, файл на 5 КБ оборвался, а страница
+  на 9 КБ доехала за 13,3 с — то есть канал до нашего домена почти мёртв (~1 КБ/с),
+  при том что reuve.ru у него открывается мгновенно, а компьютер на том же Wi-Fi
+  открывает и наш сайт.
+  Осталась одна развилка: телефон ходит по IPv6, компьютер — по IPv4, и маршрут
+  к IPv6-адресам Cloudflare может быть сломан. Эти три запроса её и разрешают.
+
+  ⚠️ Страница обязана оставаться крошечной и без внешних файлов — весь смысл в том,
+  что она доезжает там, где не доезжает приложение.
+  ⚠️ Внешние адреса дёргаем в режиме no-cors: тело прочитать нельзя, но нам и не надо —
+  важен сам факт, дошло или оборвалось. Обычным fetch они падали бы по CORS, и сетевую
+  ошибку было бы не отличить от запрета браузера.
+-->
+<style>
+  body { font: 15px/1.45 -apple-system, system-ui, sans-serif; margin: 0; padding: 16px; background: #fff; color: #16170F; }
+  h1 { font-size: 17px; margin: 0 0 12px; }
+  .row { display: flex; gap: 10px; align-items: baseline; padding: 11px 0; border-bottom: 1px solid #eee; }
+  .name { flex: 1 1 auto; min-width: 0; }
+  .res { flex: 0 0 auto; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .ok { color: #1f9d57; } .bad { color: #d2342b; } .wait { color: #999; }
+  .sum { margin-top: 16px; padding: 12px; border-radius: 10px; background: #F2F3EE; font-size: 14px; }
+  .ip { margin-top: 10px; font-size: 13px; color: #555; word-break: break-all; }
+  b { font-weight: 700; }
+</style>
+</head>
+<body>
+  <h1>Диагностика связи</h1>
+  <div id="list"></div>
+  <div class="ip" id="ip"></div>
+  <div class="sum" id="sum">Проверяю, это 20–30 секунд…</div>
+
+<script>
+(function () {
+  var T = 8000;
+  var list = document.getElementById('list');
+  var q = '?t=' + Date.now();
+  var res = {};
+
+  function row(label) {
+    var d = document.createElement('div');
+    d.className = 'row';
+    d.innerHTML = '<span class="name">' + label + '</span><span class="res wait">…</span>';
+    list.appendChild(d);
+    return d.querySelector('.res');
+  }
+
+  function probe(key, url, label, opts, done) {
+    var cell = row(label);
+    var t0 = Date.now(), killed = false;
+    var timer = setTimeout(function () {
+      killed = true; res[key] = false;
+      cell.textContent = 'ОБРЫВ'; cell.className = 'res bad'; done();
+    }, T);
+    fetch(url, opts)
+      .then(function (r) {
+        if (killed) return;
+        clearTimeout(timer);
+        res[key] = true;
+        cell.textContent = 'OK ' + ((Date.now() - t0) / 1000).toFixed(1) + 'с';
+        cell.className = 'res ok';
+        // свой домен читаем целиком — там видно, каким адресом мы пришли
+        if (key === 'own') {
+          r.text().then(function (t) {
+            var m = t.match(/ip=([^\n]+)/);
+            if (m) {
+              res.ownIp = m[1];
+              document.getElementById('ip').textContent = 'Ваш адрес для нашего сайта: ' + m[1] +
+                (m[1].indexOf(':') !== -1 ? '  (это IPv6)' : '  (это IPv4)');
+            }
+            done();
+          }, done);
+        } else done();
+      })
+      .catch(function () {
+        if (killed) return;
+        clearTimeout(timer);
+        res[key] = false;
+        cell.textContent = 'ОБРЫВ'; cell.className = 'res bad'; done();
+      });
+  }
+
+  var plan = [
+    ['own', '/cdn-cgi/trace' + q, 'наш сайт (через Cloudflare)', { cache: 'no-store' }],
+    ['v4',  'https://ipv4.cloudflare.com/cdn-cgi/trace' + q, 'Cloudflare только по IPv4', { mode: 'no-cors', cache: 'no-store' }],
+    ['v6',  'https://ipv6.cloudflare.com/cdn-cgi/trace' + q, 'Cloudflare только по IPv6', { mode: 'no-cors', cache: 'no-store' }],
+    ['reg', 'https://reuve.ru/' + q, 'reuve.ru (обычный хостинг)', { mode: 'no-cors', cache: 'no-store' }]
+  ];
+
+  var i = 0;
+  (function next() {
+    if (i >= plan.length) return verdict();
+    var p = plan[i++];
+    probe(p[0], p[1], p[2], p[3], next);
+  })();
+
+  function verdict() {
+    var s = document.getElementById('sum');
+    var v6Dead = res.v6 === false, v4Alive = res.v4 === true;
+    var camePorV6 = res.ownIp && res.ownIp.indexOf(':') !== -1;
+
+    if (v6Dead && v4Alive && camePorV6) {
+      s.innerHTML = '<b>Нашли.</b> Телефон приходит к нам по IPv6, а IPv6 к Cloudflare у вас не работает. ' +
+        'По IPv4 тот же Cloudflare открывается. Компьютер идёт по IPv4 — потому у него всё хорошо.';
+    } else if (v6Dead && v4Alive) {
+      s.innerHTML = '<b>IPv6 к Cloudflare у вас мёртв, IPv4 — жив.</b> Скорее всего дело в этом.';
+    } else if (res.own === false && res.reg === true) {
+      s.innerHTML = '<b>Наш домен не отвечает, а обычный хостинг отвечает.</b> Дело в Cloudflare, ' +
+        'но не в IPv6 — покажите этот экран.';
+    } else {
+      s.innerHTML = '<b>Покажите этот экран целиком</b> — картина не однозначная, буду смотреть по цифрам.';
+    }
+  }
+})();
+</script>
+</body>
+</html>
